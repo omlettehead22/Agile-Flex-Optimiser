@@ -1,0 +1,39 @@
+364 daily windows, 2025-11-01 to 2026-10-30
+  running Baseline ...
+  running Rule-based ...
+  running Optimised ...
+  running Optimised, EV only (no battery) ...
+  running Optimised + carbon (15 p/kgCO2) ...
+  forecasting prices (walk-forward ridge) ...
+
+                                Baseline  Rule-based  Optimised  Optimised, EV only  Optimised + carbon
+Annual cost (GBP)                3591.93     2292.77    2141.01             2407.28             2143.81
+Saving vs baseline (GBP)            0.00     1299.16    1450.92             1184.65             1448.12
+Saving vs baseline (%)              0.00       36.20      40.40               33.00               40.30
+Cost per kWh used (p)              26.39       16.84      15.73               17.68               15.75
+Emissions (kgCO2)                2233.70     1826.00    1743.60             1850.10             1699.40
+CO2 saved vs baseline (kg)          0.00      407.80     490.10              383.60              534.30
+Peak 16-19 import (kWh)          3059.60        0.00       4.30              511.60                5.00
+kWh moved out of 16-19 peak         0.00     3059.60    3055.30             2548.00             3054.60
+Negative-price half-hours used      1.00      106.00     272.00               75.00              270.00
+kWh bought at negative prices       3.50      303.70     660.60              252.00              655.90
+Battery throughput (kWh)            0.00      511.60    2839.60                0.00             2843.50
+
+Forecast study: {
+  "days": 307,
+  "from": "2025-12-28",
+  "to": "2026-10-30",
+  "mae_ridge_p": 4.14,
+  "mae_naive_p": 4.86,
+  "cost_gbp": {
+    "Optimised, actual prices": 1869.94,
+    "Optimised, ridge forecast": 1970.03,
+    "Optimised, naive forecast (yesterday)": 2028.94,
+    "Rule-based, actual prices": 2015.75,
+    "Baseline": 3146.48
+  },
+  "regret_ridge_gbp": 100.09,
+  "regret_naive_gbp": 159.0,
+  "share_of_saving_kept_ridge_pct": 92.2,
+  "share_of_saving_kept_naive_pct": 87.5
+}

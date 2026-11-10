@@ -1,0 +1,44 @@
+# All modelling assumptions live here. Change a number, re-run `python report.py`.
+
+data:
+  region: C                    # Octopus DNO region letter (C = London)
+  carbon_region_id: 13         # Carbon Intensity API region (13 = London)
+  start: "2025-11-01"          # inclusive, UTC
+  end: "2026-11-01"            # exclusive, UTC (12 full months)
+  agile_product: auto          # "auto" = newest AGILE import product, or e.g. AGILE-24-10-01
+  timezone: Europe/London
+
+ev:
+  capacity_kwh: 60             # battery size (only used as an upper bound sanity check)
+  charger_kw: 7                # home charger power
+  daily_need_kwh: 30           # energy that must be in the car by unplug time
+  plug_in: "18:00"             # local time the car arrives home
+  plug_out: "07:30"            # local time the car must be ready
+
+battery:
+  capacity_kwh: 10
+  power_kw: 5                  # same limit for charge and discharge
+  round_trip_efficiency: 0.90  # split evenly: sqrt(0.9) on the way in and on the way out
+  min_soc_frac: 0.0
+  start_soc_frac: 1.0          # SOC at 16:00 each day, going into the peak; must be restored by 16:00 next day
+  export: false                # no export: battery can only serve the home and the car
+
+house:
+  annual_kwh: 2700             # Ofgem typical domestic consumption (medium), excluding the EV
+  seasonal_swing: 0.20         # +20% in mid-winter, -20% in mid-summer
+  profile_csv: null            # optional: a CSV with columns valid_from,house_kwh to replace the synthetic profile
+
+schedule:
+  decision_time: "16:00"       # each daily plan runs 16:00 -> 16:00; next-day Agile prices are published by ~16:00
+  peak_start: "16:00"
+  peak_end: "19:00"
+
+optimiser:
+  carbon_weight_p_per_kg: 0    # 0 = pure cost. Try 10-20 p/kgCO2 to trade a little cost for carbon
+  carbon_variant_weight_p_per_kg: 15   # weight used for the extra "Optimised + carbon" row in the report
+  solver_time_limit_s: 30
+
+forecast:
+  enabled: true
+  ridge_alpha: 1.0
+  train_days: 56               # rolling training window for the price forecaster

@@ -1,0 +1,96 @@
+{
+  "period": "2025-11-01 to 2026-10-30",
+  "days": 364,
+  "negative_price_half_hours": 499,
+  "metrics": {
+    "Baseline": {
+      "Annual cost (GBP)": 3591.93,
+      "Saving vs baseline (GBP)": 0.0,
+      "Saving vs baseline (%)": 0.0,
+      "Cost per kWh used (p)": 26.39,
+      "Emissions (kgCO2)": 2233.7,
+      "CO2 saved vs baseline (kg)": 0.0,
+      "Peak 16-19 import (kWh)": 3059.6,
+      "kWh moved out of 16-19 peak": 0.0,
+      "Negative-price half-hours used": 1.0,
+      "kWh bought at negative prices": 3.5,
+      "Battery throughput (kWh)": 0.0
+    },
+    "Rule-based": {
+      "Annual cost (GBP)": 2292.77,
+      "Saving vs baseline (GBP)": 1299.16,
+      "Saving vs baseline (%)": 36.2,
+      "Cost per kWh used (p)": 16.84,
+      "Emissions (kgCO2)": 1826.0,
+      "CO2 saved vs baseline (kg)": 407.8,
+      "Peak 16-19 import (kWh)": 0.0,
+      "kWh moved out of 16-19 peak": 3059.6,
+      "Negative-price half-hours used": 106.0,
+      "kWh bought at negative prices": 303.7,
+      "Battery throughput (kWh)": 511.6
+    },
+    "Optimised": {
+      "Annual cost (GBP)": 2141.01,
+      "Saving vs baseline (GBP)": 1450.92,
+      "Saving vs baseline (%)": 40.4,
+      "Cost per kWh used (p)": 15.73,
+      "Emissions (kgCO2)": 1743.6,
+      "CO2 saved vs baseline (kg)": 490.1,
+      "Peak 16-19 import (kWh)": 4.3,
+      "kWh moved out of 16-19 peak": 3055.3,
+      "Negative-price half-hours used": 272.0,
+      "kWh bought at negative prices": 660.6,
+      "Battery throughput (kWh)": 2839.6
+    },
+    "Optimised, EV only": {
+      "Annual cost (GBP)": 2407.28,
+      "Saving vs baseline (GBP)": 1184.65,
+      "Saving vs baseline (%)": 33.0,
+      "Cost per kWh used (p)": 17.68,
+      "Emissions (kgCO2)": 1850.1,
+      "CO2 saved vs baseline (kg)": 383.6,
+      "Peak 16-19 import (kWh)": 511.6,
+      "kWh moved out of 16-19 peak": 2548.0,
+      "Negative-price half-hours used": 75.0,
+      "kWh bought at negative prices": 252.0,
+      "Battery throughput (kWh)": 0.0
+    },
+    "Optimised + carbon": {
+      "Annual cost (GBP)": 2143.81,
+      "Saving vs baseline (GBP)": 1448.12,
+      "Saving vs baseline (%)": 40.3,
+      "Cost per kWh used (p)": 15.75,
+      "Emissions (kgCO2)": 1699.4,
+      "CO2 saved vs baseline (kg)": 534.3,
+      "Peak 16-19 import (kWh)": 5.0,
+      "kWh moved out of 16-19 peak": 3054.6,
+      "Negative-price half-hours used": 270.0,
+      "kWh bought at negative prices": 655.9,
+      "Battery throughput (kWh)": 2843.5
+    }
+  },
+  "typical_winter_day": {
+    "day": "2025-12-03",
+    "baseline_gbp": 8.16,
+    "rule_based_gbp": 5.71,
+    "optimised_gbp": 5.66
+  },
+  "forecast": {
+    "days": 307,
+    "from": "2025-12-28",
+    "to": "2026-10-30",
+    "mae_ridge_p": 4.14,
+    "mae_naive_p": 4.86,
+    "cost_gbp": {
+      "Optimised, actual prices": 1869.94,
+      "Optimised, ridge forecast": 1970.03,
+      "Optimised, naive forecast (yesterday)": 2028.94,
+      "Rule-based, actual prices": 2015.75,
+      "Baseline": 3146.48
+    },
+    "regret_ridge_gbp": 100.09,
+    "regret_naive_gbp": 159.0,
+    "share_of_saving_kept_ridge_pct": 92.2,
+    "share_of_saving_kept_naive_pct": 87.5
+  }
+}

@@ -1,0 +1,9 @@
+pandas>=2.0
+numpy>=1.24
+pulp>=2.7,<3      # 2.x bundles the CBC solver; PuLP 3/4 changed the modelling API
+pyyaml>=6.0
+matplotlib>=3.7
+requests>=2.28
+tabulate>=0.9     # pandas.to_markdown
+pytest>=7.0
+jupyter           # optional: notebooks/walkthrough.ipynb
