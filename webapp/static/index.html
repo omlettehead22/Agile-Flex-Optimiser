@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Off-peak · cheapest electricity times</title>
+  <meta name="description" content="When is electricity cheapest today on Octopus Agile? Daily notifications, savings and a solar calculator.">
+  <meta name="theme-color" content="#17323F">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <span class="brand"><img src="/static/icon-192.png" alt="" width="28" height="28">Off-peak</span>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab" data-tab="today" aria-current="page">Today</button>
+      <button class="tab" data-tab="solar">Solar calculator</button>
+      <a class="tab" href="/guides">Guides</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="today" class="view">
+      <div class="hero" aria-live="polite">
+        <p class="hero-lead" id="hero-lead">Loading prices…</p>
+        <h1 class="hero-time" id="hero-time">&nbsp;</h1>
+        <p class="hero-sub" id="hero-sub"></p>
+      </div>
+
+      <figure class="ribbon-wrap">
+        <div id="ribbon" class="ribbon" role="img" aria-label="Half-hourly prices for the next 24 hours"></div>
+        <figcaption class="legend">
+          <span><i class="sw cheap"></i>Best times</span>
+          <span><i class="sw mid"></i>Other times</span>
+          <span><i class="sw peak"></i>16:00–19:00 peak</span>
+        </figcaption>
+      </figure>
+
+      <div class="cols">
+        <div>
+          <h2>Best times to use power</h2>
+          <ul id="cheapest" class="times"></ul>
+          <p id="avoid" class="avoid"></p>
+          <p id="negative" class="negative" hidden></p>
+        </div>
+        <div>
+          <h2>What you could save</h2>
+          <p id="saving" class="saving"></p>
+          <label class="inline">I can move
+            <input id="shift" type="number" min="0.5" max="100" step="0.5" value="5" inputmode="decimal"> kWh a day
+          </label>
+          <p class="hint">A dishwasher or washing machine run is about 1 kWh; an EV top-up is 7–15 kWh.</p>
+        </div>
+      </div>
+
+      <aside class="tip"><h2>Today’s tip</h2><p id="tip"></p>
+        <p class="more"><a href="/guides/shift-these-appliances">Five things worth moving to cheaper hours</a></p></aside>
+
+      <section class="panel" aria-labelledby="where-h">
+        <h2 id="where-h">Your region</h2>
+        <p class="hint">Agile prices differ by region. Enter your postcode or choose from the list.</p>
+        <form id="postcode-form" class="row">
+          <label class="sr" for="postcode">Postcode</label>
+          <input id="postcode" autocomplete="postal-code" placeholder="Postcode, e.g. SW1A 1AA">
+          <button type="submit">Find my region</button>
+        </form>
+        <label class="row">Region <select id="region"></select></label>
+        <p id="region-msg" class="msg" role="status"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="notify-h">
+        <h2 id="notify-h">Daily notifications</h2>
+        <p class="hint">Choose up to three times a day. Each message lists the cheapest times ahead and what you’d save.</p>
+        <div id="time-pickers" class="pickers"></div>
+        <button id="add-time" type="button" class="link">Add another time</button>
+        <p id="ios-note" class="hint" hidden>On iPhone, first add this page to your Home Screen (Share, then Add to Home Screen) and open it from there. Safari only allows notifications for apps on the Home Screen.</p>
+        <div class="row">
+          <button id="notify-on" type="button">Turn on notifications</button>
+          <button id="notify-test" type="button" class="secondary" hidden>Send a test notification</button>
+          <button id="notify-off" type="button" class="secondary" hidden>Turn off notifications</button>
+        </div>
+        <p id="notify-msg" class="msg" role="status"></p>
+      </section>
+    </section>
+
+    <section id="solar" class="view" hidden>
+      <div class="hero">
+        <p class="hero-lead">Would solar pay off for you?</p>
+        <h1 class="hero-time" id="solar-headline">&nbsp;</h1>
+        <p class="hero-sub" id="solar-sub">Enter your figures; the estimate updates as you type.</p>
+      </div>
+      <form id="solar-form" class="grid">
+        <label>Region <select name="region" id="solar-region"></select></label>
+        <label>Electricity use a year (kWh) <input name="annual_usage_kwh" type="number" value="3100" min="300" step="100"></label>
+        <label>Solar size (kWp) <input name="system_kwp" type="number" value="4" min="0" step="0.5"></label>
+        <label>Solar cost (£) <input name="system_cost_gbp" type="number" value="6500" min="0" step="100"></label>
+        <label>Battery size (kWh) <input name="battery_kwh" type="number" value="5" min="0" step="0.5"></label>
+        <label>Battery cost (£) <input name="battery_cost_gbp" type="number" value="3000" min="0" step="100"></label>
+        <label>Import price (p/kWh) <input name="import_p" type="number" value="25" min="1" step="0.1"></label>
+        <label>Export price (p/kWh) <input name="export_p" type="number" value="15" min="0" step="0.1"></label>
+        <label>Price change a year (%) <input name="annual_price_change_pct" type="number" value="0" step="0.5"></label>
+      </form>
+      <p class="hint">Costs are placeholders; use your installer’s quote. Check your current import and export prices on your bill.
+        Before you buy, read <a href="/guides/is-solar-worth-it">questions to ask first</a>.</p>
+      <dl id="solar-results" class="figures"></dl>
+      <figure class="months-wrap">
+        <div id="months" class="months" role="img" aria-label="Estimated saving by month"></div>
+        <figcaption class="hint">Estimated saving each month</figcaption>
+      </figure>
+      <details class="assumptions"><summary>How this is estimated</summary><ul id="assumptions"></ul></details>
+      <p id="solar-msg" class="msg" role="status"></p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Prices from the Octopus Energy public API. Estimates only; not financial advice. Not affiliated with Octopus Energy.</p>
+  </footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

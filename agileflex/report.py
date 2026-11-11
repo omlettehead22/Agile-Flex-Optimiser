@@ -1,11 +1,10 @@
-"""Run every strategy over the year, compute metrics and draw the charts.
+"""Back-test: run every strategy over the year, compute metrics and draw the charts.
 
-    python report.py            # full run, writes outputs/
-    python report.py --no-forecast
+    python -m agileflex backtest                 # full run, writes outputs/
+    python -m agileflex backtest --no-forecast   # skip the forecast study
 """
 from __future__ import annotations
 
-import argparse
 import json
 
 import matplotlib
@@ -16,8 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from common import OUT, load_config, load_data, windows
-from strategies import STRATEGIES, optimised, rule_based, run
+from .common import OUT, load_config, load_data, windows
+from .strategies import STRATEGIES, optimised, rule_based, run
 
 # Colours: categorical slots from the reference palette, baseline in neutral grey.
 COL = {"Baseline": "#8f8e88", "Rule-based": "#eb6834", "Optimised": "#2a78d6",
@@ -85,12 +84,15 @@ def typical_winter_window(wins, cfg):
     return cand[int(np.argmin(np.abs(sav - np.median(sav))))]
 
 
-def chart_day(w, cfg, path):
-    tz = cfg["data"]["timezone"]
-    sb, sr, so = (f(w, cfg) for f in (STRATEGIES["Baseline"], rule_based, optimised))
+def plot_schedules(w, cfg, path, scheds: dict, title: str, subtitle: str, soc_start: float | None = None):
+    """Three stacked panels on one time axis: price, EV charging per strategy, battery level.
+    `scheds` maps a strategy name in COL to its schedule; strategies without a battery are
+    left out of the bottom panel."""
     t = w.data["local"].dt.tz_localize(None)
     edges = list(t) + [t.iloc[-1] + pd.Timedelta(minutes=30)]
     kw = 2.0  # kWh per half-hour -> kW
+    style = {"Baseline": dict(ls="-"), "Optimised": dict(ls="-"), "Rule-based": dict(ls=(0, (3, 3)))}
+    label = {"Baseline": "Baseline: charge on arrival"}
 
     fig, ax = plt.subplots(3, 1, figsize=(10, 7.2), sharex=True,
                            gridspec_kw={"height_ratios": [1.1, 1, 1], "hspace": 0.18})
@@ -99,39 +101,52 @@ def chart_day(w, cfg, path):
             if pk:
                 a.axvspan(edges[i], edges[i + 1], color=PEAK, lw=0, zorder=0)
 
-    ax[0].stairs(w.data["price"], edges, color=INK, lw=2, baseline=None)
+    price = w.data["price"]
+    ax[0].stairs(price, edges, color=INK, lw=2, baseline=None)
     ax[0].set_ylabel("Agile price\n(p/kWh)")
-    lo, hi = min(0, w.data["price"].min()) - 2, w.data["price"].max() * 1.25
+    lo, hi = min(0, price.min()) - 2, max(price.max(), 1) * 1.25
     ax[0].set_ylim(lo, hi)
     if lo < 0:
         ax[0].axhline(0, color=INK2, lw=0.8)
-    ax[0].text(edges[0] + pd.Timedelta(minutes=10), hi * 0.97, "16:00-19:00 peak", color=INK2, fontsize=9, va="top")
+    peak_txt = f"{cfg['schedule']['peak_start']}-{cfg['schedule']['peak_end']} peak"
+    first_peak = int(np.argmax(w.peak)) if w.peak.any() else 0
+    ax[0].text(edges[first_peak] + pd.Timedelta(minutes=10), hi * 0.97, peak_txt, color=INK2, fontsize=9, va="top")
 
-    ax[1].stairs(sb["ev_kwh"] * kw, edges, color=COL["Baseline"], lw=2, label="Baseline: charge on arrival")
-    ax[1].stairs(so["ev_kwh"] * kw, edges, color=COL["Optimised"], lw=2, label="Optimised")
-    ax[1].stairs(sr["ev_kwh"] * kw, edges, color=COL["Rule-based"], lw=2, ls=(0, (3, 3)), label="Rule-based")
+    for name, s in scheds.items():  # draw order = legend order; dashed lines last so they stay visible
+        ax[1].stairs(s["ev_kwh"] * kw, edges, color=COL[name], lw=2, label=label.get(name, name),
+                     **style.get(name, {}))
     ax[1].set_ylabel("EV charging\n(kW)")
     ax[1].set_ylim(0, cfg["ev"]["charger_kw"] * 1.25)
-    ax[1].legend(loc="upper right", ncol=3, fontsize=9)
+    ax[1].legend(loc="upper right", ncol=len(scheds), fontsize=9)
 
     cap = cfg["battery"]["capacity_kwh"]
+    s0 = cfg["battery"]["start_soc_frac"] * cap if soc_start is None else soc_start
     soc_t = list(t) + [edges[-1]]
-    s0 = cfg["battery"]["start_soc_frac"] * cap
-    for s, name, ls in ((sr, "Rule-based", "--"), (so, "Optimised", "-")):
-        ax[2].plot(soc_t, 100 * np.r_[s0, s["soc_kwh"]] / cap, color=COL[name], lw=2, ls=ls, label=name)
+    with_battery = {n: s for n, s in scheds.items() if n != "Baseline" and cap > 0}
+    for name, s in with_battery.items():
+        ax[2].plot(soc_t, 100 * np.r_[s0, s["soc_kwh"]] / cap, color=COL[name], lw=2,
+                   ls="--" if name == "Rule-based" else "-", label=name)
     ax[2].set_ylabel("Home battery\ncharge (%)")
     ax[2].set_ylim(-5, 110)
-    ax[2].legend(loc="lower right", ncol=2, fontsize=9)
+    if with_battery:
+        ax[2].legend(loc="lower right", ncol=len(with_battery), fontsize=9)
     ax[2].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
     ax[2].xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 2)))
 
-    cb, cr, co = (x["cost_p"].sum() / 100 for x in (sb, sr, so))
-    fig.suptitle(f"A typical winter day, {w.day:%a %d %b %Y} (16:00 to 16:00, London)", x=0.07, ha="left",
-                 fontsize=13, color=INK, y=0.985)
-    fig.text(0.07, 0.935, f"Same house, same car, same prices. Day's bill: baseline £{cb:.2f}, "
-             f"rule-based £{cr:.2f}, optimised £{co:.2f}", ha="left", color=INK2, fontsize=10)
+    fig.suptitle(title, x=0.07, ha="left", fontsize=13, color=INK, y=0.985)
+    fig.text(0.07, 0.935, subtitle, ha="left", color=INK2, fontsize=10)
     fig.savefig(path)
     plt.close(fig)
+
+
+def chart_day(w, cfg, path):
+    sb, sr, so = (f(w, cfg) for f in (STRATEGIES["Baseline"], rule_based, optimised))
+    cb, cr, co = (x["cost_p"].sum() / 100 for x in (sb, sr, so))
+    plot_schedules(
+        w, cfg, path, {"Baseline": sb, "Optimised": so, "Rule-based": sr},
+        title=f"A typical winter day, {w.day:%a %d %b %Y} (16:00 to 16:00, London)",
+        subtitle=f"Same house, same car, same prices. Day's bill: baseline £{cb:.2f}, "
+                 f"rule-based £{cr:.2f}, optimised £{co:.2f}")
     return {"day": str(w.day.date()), "baseline_gbp": round(cb, 2), "rule_based_gbp": round(cr, 2),
             "optimised_gbp": round(co, 2)}
 
@@ -155,7 +170,7 @@ def chart_monthly(sched, path):
 
 # --------------------------------------------------------------------------- forecast stretch
 def forecast_study(cfg, df, wins):
-    from forecast import forecast_windows
+    from .forecast import forecast_windows
     print("  forecasting prices (walk-forward ridge) ...", flush=True)
     fc = forecast_windows(df, wins, cfg)
     days = [w for w in wins if w.day in fc]
@@ -187,13 +202,9 @@ def forecast_study(cfg, df, wins):
 
 
 # --------------------------------------------------------------------------- main
-def main(argv=None):
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=None)
-    ap.add_argument("--no-forecast", action="store_true")
-    args = ap.parse_args(argv)
-
-    cfg = load_config(args.config)
+def backtest(cfg: dict | None = None, forecast: bool = True):
+    """Full back-test. Writes metrics, schedules, charts and results.json to outputs/."""
+    cfg = cfg or load_config()
     df = load_data(cfg)
     wins = windows(df, cfg)
     OUT.mkdir(exist_ok=True)
@@ -218,7 +229,7 @@ def main(argv=None):
         "typical_winter_day": chart_day(typical_winter_window(wins, cfg), cfg, OUT / "headline_winter_day.png"),
     }
     chart_monthly(sched, OUT / "monthly_cost.png")
-    if cfg["forecast"]["enabled"] and not args.no_forecast:
+    if cfg["forecast"]["enabled"] and forecast:
         results["forecast"] = forecast_study(cfg, df, wins)
     (OUT / "results.json").write_text(json.dumps(results, indent=2, default=str))
 
@@ -227,6 +238,3 @@ def main(argv=None):
         print("\nForecast study:", json.dumps(results["forecast"], indent=2))
     return results
 
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,22 @@
+# Render blueprint: New > Blueprint > pick this repo. Fill in the secret values when prompted.
+services:
+  - type: web
+    name: offpeak
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL        # free Postgres, e.g. from Neon or Supabase
+        sync: false
+      - key: VAPID_PUBLIC_KEY    # python scripts/generate_vapid_keys.py
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT       # mailto:your@email
+        sync: false
+      - key: CRON_TOKEN          # any long random string; also add it as a GitHub secret
+        sync: false

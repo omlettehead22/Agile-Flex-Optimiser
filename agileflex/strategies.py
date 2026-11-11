@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from common import DT_H, Window, empty_schedule, finish_schedule
+from .common import DT_H, Window, empty_schedule, finish_schedule
 
 
 def _ev_params(cfg):
@@ -82,9 +82,10 @@ def rule_based(w: Window, cfg: dict, price: np.ndarray | None = None) -> pd.Data
     return finish_schedule(s, w)
 
 
-def optimised(w: Window, cfg: dict, price: np.ndarray | None = None, carbon_weight: float | None = None):
-    from optimise import solve_window  # local import keeps strategies importable without PuLP
-    return solve_window(w, cfg, price=price, carbon_weight=carbon_weight)
+def optimised(w: Window, cfg: dict, price: np.ndarray | None = None, carbon_weight: float | None = None,
+              soc_start: float | None = None):
+    from .optimise import solve_window  # local import keeps strategies importable without PuLP
+    return solve_window(w, cfg, price=price, carbon_weight=carbon_weight, soc_start=soc_start)
 
 
 STRATEGIES = {

@@ -1,0 +1,23 @@
+name: send-notifications
+# Every 30 minutes, ask the web app to send any notifications that are due.
+# Needs repository secrets APP_URL (e.g. https://offpeak.onrender.com) and CRON_TOKEN.
+on:
+  schedule:
+    - cron: "2,32 * * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send due notifications
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_TOKEN" ]; then
+            echo "APP_URL or CRON_TOKEN secret not set; skipping."; exit 0
+          fi
+          # Free hosts sleep when idle; the first request wakes the app, so allow time and retry.
+          curl -fsS --retry 3 --retry-delay 20 --max-time 120 \
+            -X POST "$APP_URL/api/tasks/send-due" -H "X-Cron-Token: $CRON_TOKEN"
