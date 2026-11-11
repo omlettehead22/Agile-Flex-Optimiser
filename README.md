@@ -18,7 +18,7 @@ Even when it has to plan on a **price forecast** instead of the real prices, it 
 |---|---|---|
 | [Back-test](#results-all-strategies-1-nov-2025--31-oct-2026-364-daily-plans) | Replays a year of real prices through three strategies and a forecast study | `python -m agileflex backtest` |
 | [Daily planner](#daily-planner) | Every afternoon on GitHub Actions, writes tonight's charging plan to [`plans/latest.md`](plans/) | `python -m agileflex plan` |
-| [Off-peak web app](#off-peak-web-app) | Cheapest times for any region, browser notifications, solar calculator, energy guides | `uvicorn webapp.main:app` |
+| [Off-peak web app](#off-peak-web-app) | Cheapest times for any region, browser notifications, solar calculator, energy guides. **[Live demo](https://agile-flex-offpeak.onrender.com)** | `uvicorn webapp.main:app` |
 
 ---
 
@@ -103,7 +103,9 @@ soon as it was plugged in. Saving: £4.17 (44%).
 
 ## Off-peak web app
 
-![Off-peak on a phone](docs/today_mobile.png)
+**[Try Off-peak live →](https://agile-flex-offpeak.onrender.com)** <sub>(free hosting: if nobody has visited for a while, the first load takes up to a minute while it wakes up)</sub>
+
+[![Off-peak on a phone. Click to open the live app](docs/today_mobile.png)](https://agile-flex-offpeak.onrender.com)
 
 `webapp/` is a small FastAPI app for anyone on Agile, not just EV owners:
 
@@ -119,7 +121,7 @@ export CRON_TOKEN=any-long-random-string
 uvicorn webapp.main:app --reload          # open http://127.0.0.1:8000
 ```
 
-Locally it stores subscribers in a SQLite file. Browsers allow notifications on `localhost`; in production they need HTTPS, and on iPhone the site must be added to the Home Screen first (iOS 16.4+). To deploy for free, see task 1 in [TASKS.md](TASKS.md) ([`render.yaml`](render.yaml) sets up the Render service; you add a Postgres URL, the VAPID keys and `CRON_TOKEN`).
+The live demo runs on Render's free tier with notifications switched off; turning them on needs a database and VAPID keys (task 1 in [TASKS.md](TASKS.md)). Locally it stores subscribers in a SQLite file. Browsers allow notifications on `localhost`; in production they need HTTPS, and on iPhone the site must be added to the Home Screen first (iOS 16.4+). To deploy for free, see task 1 in [TASKS.md](TASKS.md) ([`render.yaml`](render.yaml) sets up the Render service; you add a Postgres URL, the VAPID keys and `CRON_TOKEN`).
 
 | Endpoint | Purpose |
 | --- | --- |
