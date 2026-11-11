@@ -2,7 +2,7 @@
 import pandas as pd
 import pytest
 
-from fetch import parse_agile, parse_carbon, pick_agile_product, tariff_code
+from agileflex.fetch import parse_agile, parse_carbon, pick_agile_product, tariff_code
 
 
 def test_pick_current_agile_import_product():
@@ -39,3 +39,45 @@ def test_parse_carbon_fills_and_flags_gaps():
     gap = df[df["interpolated"]]
     # same half-hour on neighbouring days -> same value
     assert (gap["gco2_per_kwh"].to_numpy() == 100 + gap["valid_from"].dt.hour.to_numpy()).all()
+
+
+# --------------------------------------------------------------- helpers shared with the planner and web app
+from agileflex.fetch import carbon_rows, fetch_agile_prices, find_agile_product, tariff_code_for  # noqa: E402
+
+
+def test_rates_pagination_and_parsing():
+    pages = {
+        "first": {"results": [{"valid_from": "2026-01-01T00:30:00Z", "value_inc_vat": 2.0}], "next": "second"},
+        "second": {"results": [{"valid_from": "2026-01-01T00:00:00Z", "value_inc_vat": 1.0}], "next": None},
+    }
+    calls = []
+
+    def get(url, params=None):
+        calls.append(url)
+        return pages["second"] if url == "second" else pages["first"]
+
+    df = fetch_agile_prices("P", "T", pd.Timestamp("2026-01-01", tz="UTC"), pd.Timestamp("2026-01-02", tz="UTC"), get)
+    assert df["price_p_kwh"].tolist() == [1.0, 2.0] and len(calls) == 2
+
+
+def test_product_and_tariff_lookup_with_fallback():
+    def get(url, params=None):
+        if url.endswith("/products/"):
+            return {"results": [{"code": "AGILE-24-10-01", "available_from": "2024-10-01"}], "next": None}
+        return {"single_register_electricity_tariffs": {}}  # region missing -> documented pattern
+
+    assert find_agile_product(get) == "AGILE-24-10-01"
+    assert tariff_code_for("AGILE-24-10-01", "C", get) == "E-1R-AGILE-24-10-01-C"
+
+
+@pytest.mark.parametrize("wrap", [dict, lambda d: [d]])
+def test_carbon_both_payload_shapes_and_chunking(wrap):
+    urls = []
+
+    def get(url, params=None):
+        urls.append(url)
+        return {"data": wrap({"data": [{"from": "2026-01-01T00:00Z", "intensity": {"forecast": 100}}]})}
+
+    rows = carbon_rows(13, pd.Timestamp("2026-01-01", tz="UTC"), pd.Timestamp("2026-02-01", tz="UTC"), get)
+    assert len(urls) == 3 and all(u.endswith("/regionid/13") for u in urls)  # 13-day chunks
+    assert rows[0]["intensity"]["forecast"] == 100

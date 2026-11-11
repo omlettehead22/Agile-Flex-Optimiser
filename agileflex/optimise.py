@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pulp
 
-from common import DT_H, Window, empty_schedule, finish_schedule
+from .common import DT_H, Window, empty_schedule, finish_schedule
 
 
 def _var(name, lo, hi, cat="Continuous"):
@@ -32,9 +32,11 @@ def _solver(cfg):
 
 
 def solve_window(w: Window, cfg: dict, price: np.ndarray | None = None,
-                 carbon_weight: float | None = None) -> pd.DataFrame:
+                 carbon_weight: float | None = None, soc_start: float | None = None) -> pd.DataFrame:
+    """Solve one window. `price` overrides the prices planned on (e.g. a forecast); `soc_start`
+    overrides the battery's starting level (the daily planner carries it from yesterday's plan)."""
     p = w.data["price"].to_numpy() if price is None else np.asarray(price, dtype=float)
-    ci = w.data["gco2"].to_numpy()
+    ci = np.nan_to_num(w.data["gco2"].to_numpy(), nan=0.0)  # carbon forecast is best-effort
     house = w.data["house_kwh"].to_numpy()
     wgt = cfg["optimiser"]["carbon_weight_p_per_kg"] if carbon_weight is None else carbon_weight
     coef = p + wgt * ci / 1000.0
@@ -44,7 +46,8 @@ def solve_window(w: Window, cfg: dict, price: np.ndarray | None = None,
     b = cfg["battery"]
     cap, step = b["capacity_kwh"], b["power_kw"] * DT_H
     eta = float(np.sqrt(b["round_trip_efficiency"]))
-    smin, s0 = b["min_soc_frac"] * cap, b["start_soc_frac"] * cap
+    smin = b["min_soc_frac"] * cap
+    s0 = b["start_soc_frac"] * cap if soc_start is None else float(np.clip(soc_start, smin, cap))
 
     T = range(len(p))
     m = pulp.LpProblem("flex", pulp.LpMinimize)
@@ -54,7 +57,10 @@ def solve_window(w: Window, cfg: dict, price: np.ndarray | None = None,
     soc = [_var(f"soc{t}", smin, cap) for t in T]
     mode = [_var(f"mode{t}", 0, 1, "Binary") for t in T]
 
-    m += pulp.lpSum(coef[t] * (house[t] + ev[t] + ch[t] - dis[t]) for t in T)
+    # A 0.01p/kWh throughput cost breaks ties between equal-cost schedules, so the battery
+    # doesn't make pointless 0.1 kWh moves; it changes annual cost by pennies.
+    tie = cfg["optimiser"].get("battery_tiebreak_p_per_kwh", 0.01)
+    m += pulp.lpSum(coef[t] * (house[t] + ev[t] + ch[t] - dis[t]) + tie * (ch[t] + dis[t]) for t in T)
     m += pulp.lpSum(ev) == need
     for t in T:
         m += ch[t] <= step * mode[t]
@@ -74,4 +80,5 @@ def solve_window(w: Window, cfg: dict, price: np.ndarray | None = None,
     s["bat_charge_kwh"] = val(ch)
     s["bat_discharge_kwh"] = val(dis)
     s["soc_kwh"] = np.array([x.value() for x in soc])
+    s.attrs["soc_start"] = s0
     return finish_schedule(s, w)

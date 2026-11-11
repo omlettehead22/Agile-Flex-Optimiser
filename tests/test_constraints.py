@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from common import DT_H, Window, load_config, load_data, windows
-from strategies import STRATEGIES, baseline, optimised, rule_based
+from agileflex.common import DT_H, Window, load_config, load_data, windows
+from agileflex.strategies import STRATEGIES, baseline, optimised, rule_based
 
 TOL = 1e-5
 

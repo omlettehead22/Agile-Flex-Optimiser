@@ -7,17 +7,17 @@
   forecasting prices (walk-forward ridge) ...
 
                                 Baseline  Rule-based  Optimised  Optimised, EV only  Optimised + carbon
-Annual cost (GBP)                3591.93     2292.77    2141.01             2407.28             2143.81
-Saving vs baseline (GBP)            0.00     1299.16    1450.92             1184.65             1448.12
-Saving vs baseline (%)              0.00       36.20      40.40               33.00               40.30
-Cost per kWh used (p)              26.39       16.84      15.73               17.68               15.75
-Emissions (kgCO2)                2233.70     1826.00    1743.60             1850.10             1699.40
-CO2 saved vs baseline (kg)          0.00      407.80     490.10              383.60              534.30
-Peak 16-19 import (kWh)          3059.60        0.00       4.30              511.60                5.00
-kWh moved out of 16-19 peak         0.00     3059.60    3055.30             2548.00             3054.60
-Negative-price half-hours used      1.00      106.00     272.00               75.00              270.00
-kWh bought at negative prices       3.50      303.70     660.60              252.00              655.90
-Battery throughput (kWh)            0.00      511.60    2839.60                0.00             2843.50
+Annual cost (GBP)                3591.43     2294.82    2142.13             2409.24             2144.94
+Saving vs baseline (GBP)            0.00     1296.61    1449.30             1182.19             1446.49
+Saving vs baseline (%)              0.00       36.10      40.40               32.90               40.30
+Cost per kWh used (p)              26.39       16.86      15.74               17.70               15.76
+Emissions (kgCO2)                2233.40     1827.30    1744.20             1851.40             1700.50
+CO2 saved vs baseline (kg)          0.00      406.10     489.20              382.00              532.90
+Peak 16-19 import (kWh)          3059.20        0.00       4.30              511.20                5.00
+kWh moved out of 16-19 peak         0.00     3059.20    3054.80             2548.00             3054.10
+Negative-price half-hours used      1.00      106.00     269.00               75.00              269.00
+kWh bought at negative prices       3.50      303.70     657.50              252.00              656.80
+Battery throughput (kWh)            0.00      511.20    2835.40                0.00             2844.10
 
 Forecast study: {
   "days": 307,
@@ -26,14 +26,14 @@ Forecast study: {
   "mae_ridge_p": 4.14,
   "mae_naive_p": 4.86,
   "cost_gbp": {
-    "Optimised, actual prices": 1869.94,
-    "Optimised, ridge forecast": 1970.03,
-    "Optimised, naive forecast (yesterday)": 2028.94,
-    "Rule-based, actual prices": 2015.75,
-    "Baseline": 3146.48
+    "Optimised, actual prices": 1871.12,
+    "Optimised, ridge forecast": 1970.09,
+    "Optimised, naive forecast (yesterday)": 2028.01,
+    "Rule-based, actual prices": 2017.86,
+    "Baseline": 3146.06
   },
-  "regret_ridge_gbp": 100.09,
-  "regret_naive_gbp": 159.0,
+  "regret_ridge_gbp": 98.98,
+  "regret_naive_gbp": 156.89,
   "share_of_saving_kept_ridge_pct": 92.2,
-  "share_of_saving_kept_naive_pct": 87.5
+  "share_of_saving_kept_naive_pct": 87.7
 }

@@ -20,13 +20,16 @@ battery:
   power_kw: 5                  # same limit for charge and discharge
   round_trip_efficiency: 0.90  # split evenly: sqrt(0.9) on the way in and on the way out
   min_soc_frac: 0.0
-  start_soc_frac: 1.0          # SOC at 16:00 each day, going into the peak; must be restored by 16:00 next day
+  start_soc_frac: 1.0          # back-test: SOC at 16:00 each day, restored by 16:00 next day. Planner: first day's SOC
   export: false                # no export: battery can only serve the home and the car
 
 house:
   annual_kwh: 2700             # Ofgem typical domestic consumption (medium), excluding the EV
   seasonal_swing: 0.20         # +20% in mid-winter, -20% in mid-summer
   profile_csv: null            # optional: a CSV with columns valid_from,house_kwh to replace the synthetic profile
+
+planner:
+  plans_dir: plans             # where `python -m agileflex plan` writes tonight's plan
 
 schedule:
   decision_time: "16:00"       # each daily plan runs 16:00 -> 16:00; next-day Agile prices are published by ~16:00
@@ -36,6 +39,7 @@ schedule:
 optimiser:
   carbon_weight_p_per_kg: 0    # 0 = pure cost. Try 10-20 p/kgCO2 to trade a little cost for carbon
   carbon_variant_weight_p_per_kg: 15   # weight used for the extra "Optimised + carbon" row in the report
+  battery_tiebreak_p_per_kwh: 0.01   # tiny wear cost on battery throughput; stops pointless micro-moves
   solver_time_limit_s: 30
 
 forecast:

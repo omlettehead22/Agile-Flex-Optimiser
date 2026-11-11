@@ -1,0 +1,10 @@
+[project]
+name = "agileflex"
+version = "0.3.0"
+description = "EV + home battery scheduling on Octopus Agile prices: back-test, daily planner and Off-peak web app"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
