@@ -16,6 +16,17 @@ def _fmt(t: pd.Timestamp) -> str:
     return f"{t:%H:%M}"
 
 
+def _block(a: pd.Timestamp, b: pd.Timestamp, today, **extra) -> dict:
+    """A time range for display, flagged when it starts tomorrow so '16:30' isn't read as already past."""
+    return {"start": _fmt(a), "end": _fmt(b), "day": "tomorrow" if a.date() > today else "today", **extra}
+
+
+def when(block: dict) -> str:
+    """'tomorrow 16:30–17:30' or '16:30–17:30'."""
+    span = f"{block['start']}–{block['end']}"
+    return f"tomorrow {span}" if block.get("day") == "tomorrow" else span
+
+
 def build_advice(prices: pd.Series, now: pd.Timestamp, shift_kwh: float = 5.0, horizon_h: int = 24) -> dict:
     """prices: p/kWh indexed by half-hour start (UTC). Uses slots from the current half-hour onwards."""
     start = now.floor("30min")
@@ -43,10 +54,10 @@ def build_advice(prices: pd.Series, now: pd.Timestamp, shift_kwh: float = 5.0, h
         "generated_at": now.isoformat(),
         "horizon_end": (upcoming.index[-1] + pd.Timedelta(minutes=30)).tz_convert(TZ).isoformat(),
         "slots": [{"start": ts.isoformat(), "price": round(float(v), 2),
-                   "best": any(a <= ts < b for a, b, _ in cheapest)} for ts, v in zip(t, p)],
-        "cheapest": [{"start": _fmt(a), "end": _fmt(b), "avg_p": round(avg, 1)} for a, b, avg in cheapest],
-        "avoid": [{"start": _fmt(a), "end": _fmt(b), "avg_p": round(avg, 1)} for a, b, avg in avoid],
-        "negative": [{"start": _fmt(a), "end": _fmt(b)} for a, b, _ in negative],
+                   "best": any(a <= ts < b for a, b, _ in cheapest)} for ts, v in zip(t, p, strict=True)],
+        "cheapest": [_block(a, b, day.date(), avg_p=round(avg, 1)) for a, b, avg in cheapest],
+        "avoid": [_block(a, b, day.date(), avg_p=round(avg, 1)) for a, b, avg in avoid],
+        "negative": [_block(a, b, day.date()) for a, b, _ in negative],
         "average_p": round(average, 1),
         "peak_average_p": round(peak_avg, 1) if peak_avg is not None else None,
         "cheapest_2h_p": round(cheapest_2h, 1),
@@ -61,17 +72,16 @@ def build_advice(prices: pd.Series, now: pd.Timestamp, shift_kwh: float = 5.0, h
 def notification(advice: dict) -> dict:
     """Short title/body for a push notification (phones show about 2–4 lines)."""
     first = advice["cheapest"][0]
-    title = f"Cheapest: {first['start']}–{first['end']} ({first['avg_p']:.1f}p)"
+    title = f"Cheapest: {when(first)} ({first['avg_p']:.1f}p)"
     parts = []
     if advice["negative"]:
-        neg = advice["negative"][0]
-        parts.append(f"Negative prices {neg['start']}–{neg['end']}: you're paid to use power.")
+        parts.append(f"Negative prices {when(advice['negative'][0])}: you're paid to use power.")
     others = advice["cheapest"][1:]
     if others:
-        parts.append("Also " + ", ".join(f"{c['start']}–{c['end']}" for c in others) + ".")
+        parts.append("Also " + ", ".join(when(c) for c in others) + ".")
     if advice["avoid"]:
         a = advice["avoid"][0]
-        parts.append(f"Avoid {a['start']}–{a['end']} ({a['avg_p']:.0f}p).")
+        parts.append(f"Avoid {when(a)} ({a['avg_p']:.0f}p).")
     saving = advice["saving_vs_peak_gbp"] if advice["saving_vs_peak_gbp"] is not None else advice["saving_vs_average_gbp"]
     basis = "the evening peak" if advice["saving_vs_peak_gbp"] is not None else "the average price"
     parts.append(f"Shifting {advice['shift_kwh']:g} kWh saves about £{saving:.2f} vs {basis}.")

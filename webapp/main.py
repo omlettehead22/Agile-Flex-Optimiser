@@ -103,7 +103,7 @@ def create_app(database_url: str | None = None, get=http_get, clock=None, sender
         except ValueError as exc:
             raise HTTPException(503, str(exc)) from exc
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)  # HEAD: Render wake-up and uptime checks
     def index():
         return FileResponse(STATIC / "index.html")
 
@@ -158,7 +158,7 @@ def create_app(database_url: str | None = None, get=http_get, clock=None, sender
             sender(sub, msg)
         except Gone:
             store.deactivate(sub.endpoint)
-            raise HTTPException(410, "This browser's subscription has expired. Turn notifications on again.")
+            raise HTTPException(410, "This browser's subscription has expired. Turn notifications on again.") from None
         return {"ok": True, "sent": msg}
 
     @app.post("/api/solar")
@@ -213,7 +213,7 @@ def create_app(database_url: str | None = None, get=http_get, clock=None, sender
         return [{"slug": a.slug, "title": a.title, "summary": a.summary, "updated": a.updated.isoformat(),
                  "reading_minutes": a.reading_minutes, "url": f"/guides/{a.slug}"} for a in load_all().values()]
 
-    @app.get("/api/health")
+    @app.api_route("/api/health", methods=["GET", "HEAD"])
     def health():
         return {"ok": True, "subscribers": store.count_active()}
 

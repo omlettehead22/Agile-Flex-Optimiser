@@ -99,29 +99,34 @@ async function loadAdvice() {
   }
 }
 
+// "tomorrow 16:30–17:30" for ranges that start tomorrow, so they aren't read as already past.
+const span = (b) => `${b.start}–${b.end}`;
+const when = (b) => (b.day === "tomorrow" ? `tomorrow ${span(b)}` : span(b));
+const When = (b) => (b.day === "tomorrow" ? `Tomorrow ${span(b)}` : span(b));
+
 function renderAdvice(a) {
   const first = a.cheapest[0];
   $("#hero-lead").textContent = `Cheapest time in ${a.region_name} in the next 24 hours`;
-  $("#hero-time").textContent = `${first.start}–${first.end}`;
-  $("#hero-sub").textContent = `${first.avg_p.toFixed(1)}p per kWh, against an average of ${a.average_p.toFixed(1)}p.`;
+  $("#hero-time").textContent = span(first);
+  $("#hero-sub").textContent = `${first.day === "tomorrow" ? "Tomorrow. " : ""}${first.avg_p.toFixed(1)}p per kWh, against an average of ${a.average_p.toFixed(1)}p.`;
 
   const ul = $("#cheapest");
   ul.innerHTML = "";
   for (const c of a.cheapest) {
     const li = document.createElement("li");
-    const when = document.createElement("strong");
-    when.textContent = `${c.start}–${c.end}`;
+    const whenEl = document.createElement("strong");
+    whenEl.textContent = When(c);
     const price = document.createElement("span");
     price.textContent = `${c.avg_p.toFixed(1)}p`;
-    li.append(when, price);
+    li.append(whenEl, price);
     ul.append(li);
   }
   const avoid = a.avoid[0];
-  $("#avoid").textContent = avoid ? `Avoid ${avoid.start}–${avoid.end}: ${avoid.avg_p.toFixed(1)}p per kWh on average.` : "";
+  $("#avoid").textContent = avoid ? `Avoid ${when(avoid)}: ${avoid.avg_p.toFixed(1)}p per kWh on average.` : "";
   const neg = $("#negative");
   neg.hidden = !a.negative.length;
   neg.textContent = a.negative.length
-    ? `Negative prices ${a.negative.map((n) => `${n.start}–${n.end}`).join(", ")}: you’re paid to use electricity. ` : "";
+    ? `Negative prices ${a.negative.map(when).join(", ")}: you’re paid to use electricity. ` : "";
   if (a.negative.length) {
     const link = document.createElement("a");
     link.href = "/guides/negative-prices";

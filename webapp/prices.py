@@ -52,9 +52,15 @@ class PriceService:
         hit = self._cache.get(region)
         if hit and time.time() - hit[0] < self.ttl:
             return hit[1]
-        product = self._product_code()
-        tariff = tariff_code_for(product, region, self.get)
-        start = self.clock().floor("30min")
-        series = fetch_agile_prices(product, tariff, start, start + pd.Timedelta(hours=48), self.get)["price_p_kwh"]
+        try:
+            product = self._product_code()
+            tariff = tariff_code_for(product, region, self.get)
+            start = self.clock().floor("30min")
+            series = fetch_agile_prices(product, tariff, start, start + pd.Timedelta(hours=48),
+                                        self.get)["price_p_kwh"]
+        except Exception as exc:  # network error, timeout or bad response from Octopus
+            if hit and time.time() - hit[0] < 24 * 3600:
+                return hit[1]  # stale but still useful: Agile prices are fixed a day ahead
+            raise ValueError("Octopus prices are unavailable right now. Please try again in a few minutes.") from exc
         self._cache[region] = (time.time(), series)
         return series

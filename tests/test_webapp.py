@@ -1,5 +1,4 @@
 import base64
-import json
 import os
 
 import pandas as pd
@@ -148,8 +147,8 @@ def test_notification_text_is_short_and_specific():
     prices.iloc[16:22] = 35.0   # 16:00-19:00 peak
     advice = build_advice(prices, pd.Timestamp("2025-12-03 08:10", tz="UTC"), shift_kwh=10)
     msg = notification(advice)
-    assert msg["title"] == "Cheapest: 01:00–03:00 (-2.0p)"
-    assert "Negative prices 01:00–03:00" in msg["body"] and "Avoid" in msg["body"]
+    assert msg["title"] == "Cheapest: tomorrow 01:00–03:00 (-2.0p)"  # 01:00 is after midnight
+    assert "Negative prices tomorrow 01:00–03:00" in msg["body"] and "Avoid 18:00–19:00 (35p)" in msg["body"]
     assert advice["saving_vs_peak_gbp"] == pytest.approx(10 * (35 + 2) / 100, abs=0.01)
     assert len(msg["body"]) < 260
 
@@ -253,3 +252,48 @@ def test_guide_header_validation(tmp_path):
     nohead.write_text("no header")
     with pytest.raises(ValueError, match="header"):
         parse(nohead)
+
+
+def test_octopus_outage_gives_clear_503_then_serves_cached_prices(tmp_path, monkeypatch):
+    import requests
+    import webapp.prices as prices_mod
+
+    state = {"down": True}
+
+    def flaky_get(url, params=None):
+        if state["down"]:
+            raise requests.ConnectionError("Octopus unreachable")
+        return fake_get(url, params)
+
+    app = create_app(f"sqlite:///{tmp_path / 'o.db'}", get=flaky_get, clock=Clock("2025-12-03 08:10"),
+                     sender=Outbox(), vapid_public_key="PUBKEY", cron_token="secret")
+    client = TestClient(app)
+    r = client.get("/api/advice?region=C")
+    assert r.status_code == 503 and "try again" in r.json()["detail"]  # friendly, not a bare 500
+
+    state["down"] = False
+    assert client.get("/api/advice?region=C").status_code == 200    # fills the cache
+    state["down"] = True
+    real_time = prices_mod.time.time
+    monkeypatch.setattr(prices_mod.time, "time", lambda: real_time() + 3600)  # cache now stale
+    r = client.get("/api/advice?region=C")
+    assert r.status_code == 200 and r.json()["slots"]                # stale prices beat an error
+
+
+def test_ranges_starting_tomorrow_are_labelled():
+    now = pd.Timestamp("2025-12-03 17:20", tz="UTC")  # late afternoon: some best/avoid times fall tomorrow
+    a = build_advice(MARKET, now)
+    blocks = a["cheapest"] + a["avoid"]
+    assert {b["day"] for b in blocks} <= {"today", "tomorrow"}
+    for b in blocks:  # a range is "tomorrow" exactly when its start is earlier in the day than now
+        assert (b["day"] == "tomorrow") == (b["start"] < "17:30" and b["start"] != "17:00")
+    msg = notification(a)
+    for b in blocks:
+        if b["day"] == "tomorrow":
+            assert f"tomorrow {b['start']}–{b['end']}" in msg["title"] + msg["body"]
+
+
+def test_head_requests_succeed(env):
+    client, _, _ = env
+    assert client.head("/").status_code == 200
+    assert client.head("/api/health").status_code == 200

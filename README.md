@@ -99,7 +99,7 @@ soon as it was plugged in. Saving: £4.17 (44%).
 ```
 <sub>Example from test data.</sub>
 
-**Turn it on (10 minutes):** set your region, car and battery in `config.yaml` → GitHub **Actions** tab → enable workflows → **daily-plan** → **Run workflow**. If it fails at `git push`, set **Settings → Actions → General → Workflow permissions → Read and write**. It then runs at 15:45, 16:45 and 17:45 UTC and commits once prices are out. GitHub pauses scheduled workflows on repos with no activity for 60 days; re-enable from the Actions tab if that happens.
+**Turn it on (10 minutes):** set your region, car and battery in `config.yaml` → GitHub **Actions** tab → enable workflows → **daily-plan** → **Run workflow**. If it fails at `git push`, set **Settings → Actions → General → Workflow permissions → Read and write**. It then tries every 30 minutes from 15:17 to 21:47 UTC, because GitHub often delays or drops scheduled jobs; the first run after prices are out commits the plan and later runs stop in seconds. A plan made after 18:00 starts from the next half-hour. GitHub pauses scheduled workflows on repos with no activity for 60 days; re-enable from the Actions tab if that happens.
 
 ## Off-peak web app
 
@@ -141,12 +141,12 @@ The live demo runs on Render's free tier with notifications switched off; turnin
 git clone https://github.com/omlettehead22/Agile-Flex-Optimiser && cd Agile-Flex-Optimiser
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pytest -q                          # 62 tests, ~45 s
+pytest -q                          # 66 tests, ~45 s
 python -m agileflex backtest       # ~1 min: all strategies, metrics, charts, forecast study -> outputs/
 python -m agileflex plan           # tonight's plan -> plans/ (after ~16:00 UK time)
 ```
 
-The year of data is cached in `data/`, so the back-test needs no network. To change region or period, edit `config.yaml` and run `python -m agileflex fetch --refresh` (no API key required). Open [`notebooks/walkthrough.ipynb`](notebooks/walkthrough.ipynb) for a step-by-step tour.
+The year of data is cached in `data/`, so the back-test needs no network. To change region or period, edit `config.yaml` and run `python -m agileflex fetch --refresh` (no API key required). For a step-by-step tour, `pip install jupyter` and open [`notebooks/walkthrough.ipynb`](notebooks/walkthrough.ipynb).
 
 ## Project layout
 
