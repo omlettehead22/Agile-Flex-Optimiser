@@ -97,6 +97,16 @@ def create_app(database_url: str | None = None, get=http_get, clock=None, sender
     app = FastAPI(title="Off-peak", docs_url="/api/docs")
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
+    @app.middleware("http")
+    async def revalidate_pages_and_assets(request, call_next):
+        """Without Cache-Control, browsers reuse an old app.js after a deploy. no-cache makes them
+        check first; an unchanged file costs only a 304 thanks to its ETag."""
+        response = await call_next(request)
+        path = request.url.path
+        if path.startswith("/static/") or path == "/" or path.startswith("/guides"):
+            response.headers.setdefault("Cache-Control", "no-cache")
+        return response
+
     def advice_for(region: str, shift_kwh: float) -> dict:
         try:
             return build_advice(prices.upcoming(region), clock(), shift_kwh)
