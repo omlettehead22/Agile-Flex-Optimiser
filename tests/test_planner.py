@@ -119,3 +119,13 @@ def test_plan_starts_from_yesterdays_battery_level(plan_cfg):
     end_day1 = json.loads((out / "state.json").read_text())["battery_soc_end_kwh"]
     make_plan(plan_cfg, now=pd.Timestamp("2025-12-04 16:45", tz="UTC"), get=get)
     assert json.loads((out / "state.json").read_text())["battery_soc_start_kwh"] == pytest.approx(end_day1)
+
+
+def test_late_run_plans_from_next_half_hour(plan_cfg):
+    out = Path(plan_cfg["planner"]["plans_dir"])
+    make_plan(plan_cfg, now=pd.Timestamp("2025-12-03 21:47", tz="UTC"), get=fake_octopus("2026-01-01"))
+    text = (out / "latest.md").read_text()
+    assert text.startswith("# Charging plan: Wed 03 Dec 22:00 →")
+    assert "Planned late, at 21:47, so this plan starts at 22:00 instead of 18:00." in text
+    need = plan_cfg["ev"]["daily_need_kwh"]
+    assert f"## Car: {need:g} kWh needed by 07:30" in text  # still fully charged by morning

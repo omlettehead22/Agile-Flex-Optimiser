@@ -56,7 +56,7 @@ def fetch_window(cfg: dict, start: pd.Timestamp, end: pd.Timestamp, get=http_get
 def blocks(times: pd.DatetimeIndex, kwh: np.ndarray, min_kwh: float = 0.05) -> list[tuple]:
     """Merge consecutive active half-hours into (start, end, kWh) blocks."""
     out: list[list] = []
-    for t, e in zip(times, kwh):
+    for t, e in zip(times, kwh, strict=True):
         if e > min_kwh:
             if out and out[-1][1] == t:
                 out[-1][1] = t + SLOT
@@ -178,7 +178,12 @@ def make_plan(cfg: dict, now: pd.Timestamp | None = None, get=http_get, force: b
         print(f"Plan for {start:%d %b} already exists; use --force to rebuild.")
         return None
 
-    df, tariff = fetch_window(cfg, start, end, get)
+    # Run late (GitHub sometimes delays scheduled jobs)? Plan from the next half-hour, not 18:00.
+    plan_start = max(start, now.tz_convert(start.tz).ceil("30min"))
+    if plan_start >= end:
+        print("Today's window has already ended; nothing to plan.")
+        return None
+    df, tariff = fetch_window(cfg, plan_start, end, get)
     if df is None:
         print(f"Prices up to {end:%d %b %H:%M} are not published yet; try again later.")
         return None
@@ -211,11 +216,15 @@ def make_plan(cfg: dict, now: pd.Timestamp | None = None, get=http_get, force: b
     state_path.write_text(json.dumps({"window_start": key, "battery_soc_start_kwh": soc0,
                                       "battery_soc_end_kwh": round(soc_end, 4)}, indent=2))
 
-    text = render(cfg, start, end, tariff, opt, base, history, now)
+    text = render(cfg, plan_start, end, tariff, opt, base, history, now)
+    if plan_start > start:
+        note = (f"\n> Planned late, at {now.tz_convert(start.tz):%H:%M}, so this plan starts at "
+                f"{plan_start:%H:%M} instead of {start:%H:%M}.\n")
+        text = text.replace("\n\n## Car:", f"\n{note}\n## Car:", 1)
     (out / "latest.md").write_text(text)
     (out / "archive" / f"{start:%Y-%m-%d}.md").write_text(text.replace("\n![Plan chart](latest.png)\n", "\n"))
     plot_schedules(w, cfg, out / "latest.png", {"Baseline": base, "Optimised": opt},
-                   title=f"Plan for {start:%a %d %b %H:%M} → {end:%a %d %b %H:%M}",
+                   title=f"Plan for {plan_start:%a %d %b %H:%M} → {end:%a %d %b %H:%M}",
                    subtitle=f"Estimated £{cost:.2f} vs £{base_cost:.2f} charging on plug-in "
                             f"(saving £{base_cost - cost:.2f})", soc_start=soc0)
     print(f"Plan written to {out / 'latest.md'} (saving £{row['saving_gbp']:.2f}, {row['saving_pct']:.0f}%)")

@@ -1,11 +1,11 @@
 name: daily-plan
 # Octopus publishes tomorrow's Agile prices around 16:00 UK time (sometimes later).
-# Three tries; the planner skips quietly if prices are missing or today's plan already exists.
+# GitHub runs scheduled jobs on a best-effort basis and often delays or drops them, so this tries
+# every 30 minutes from 15:17 to 21:47 UTC. Once today's plan exists, later runs stop in seconds.
+# A plan made after 18:00 starts from the next half-hour instead.
 on:
   schedule:
-    - cron: "45 15 * * *"
-    - cron: "45 16 * * *"
-    - cron: "45 17 * * *"
+    - cron: "17,47 15-21 * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,13 +18,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Already planned today?
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ -f "plans/archive/$(TZ=Europe/London date +%F).md" ]; then
+            echo "Today's plan already exists."; echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@v5
+        if: steps.check.outputs.done != 'true'
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt
-      - run: python -m agileflex plan
+      - if: steps.check.outputs.done != 'true'
+        run: pip install -r requirements.txt
+      - if: steps.check.outputs.done != 'true'
+        run: python -m agileflex plan
       - name: Commit the plan
+        if: steps.check.outputs.done != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
