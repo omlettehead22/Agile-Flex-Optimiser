@@ -141,7 +141,7 @@ The live demo runs on Render's free tier with notifications switched off; turnin
 git clone https://github.com/omlettehead22/Agile-Flex-Optimiser && cd Agile-Flex-Optimiser
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pytest -q                          # 66 tests, ~45 s
+pytest -q                          # 67 tests, ~45 s
 python -m agileflex backtest       # ~1 min: all strategies, metrics, charts, forecast study -> outputs/
 python -m agileflex plan           # tonight's plan -> plans/ (after ~16:00 UK time)
 ```

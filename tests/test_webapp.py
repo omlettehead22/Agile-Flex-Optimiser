@@ -297,3 +297,10 @@ def test_head_requests_succeed(env):
     client, _, _ = env
     assert client.head("/").status_code == 200
     assert client.head("/api/health").status_code == 200
+
+
+def test_pages_and_assets_are_revalidated_after_deploys(env):
+    client, _, _ = env
+    for path in ("/", "/static/app.js", "/static/style.css", "/guides"):
+        assert client.get(path).headers.get("cache-control") == "no-cache", path
+    assert "no-cache" not in client.get("/api/health").headers.get("cache-control", "")
