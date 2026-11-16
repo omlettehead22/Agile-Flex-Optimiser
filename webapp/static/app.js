@@ -43,6 +43,7 @@ function showTab(name) {
   if (name === "today" && lastSlots) renderRibbon(lastSlots);
 }
 document.querySelectorAll(".tab[data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+window.addEventListener("hashchange", () => showTab(location.hash === "#solar" ? "solar" : "today"));
 
 /* ---------- regions ---------- */
 function fillRegions(regions) {
@@ -106,9 +107,19 @@ const When = (b) => (b.day === "tomorrow" ? `Tomorrow ${span(b)}` : span(b));
 
 function renderAdvice(a) {
   const first = a.cheapest[0];
-  $("#hero-lead").textContent = `Cheapest time in ${a.region_name} in the next 24 hours`;
+  const below = (p) => Math.round((1 - p / a.average_p) * 100);
+  $("#hero-lead").textContent = `Cheapest time in ${a.region_name}, next 24 hours`;
   $("#hero-time").textContent = span(first);
-  $("#hero-sub").textContent = `${first.day === "tomorrow" ? "Tomorrow. " : ""}${first.avg_p.toFixed(1)}p per kWh, against an average of ${a.average_p.toFixed(1)}p.`;
+  const sub = $("#hero-sub");
+  sub.textContent = `${first.day === "tomorrow" ? "Tomorrow, at " : "At "}${first.avg_p.toFixed(1)}p per kWh. `;
+  if (a.average_p > 0 && below(first.avg_p) > 0) {
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = `${below(first.avg_p)}% below the day’s average`;
+    sub.append(badge, document.createTextNode(` of ${a.average_p.toFixed(1)}p.`));
+  } else {
+    sub.append(document.createTextNode(`The day’s average is ${a.average_p.toFixed(1)}p.`));
+  }
 
   const ul = $("#cheapest");
   ul.innerHTML = "";
@@ -140,8 +151,8 @@ function renderAdvice(a) {
   const amount = document.createElement("strong");
   amount.textContent = gbp(vsPeak ?? a.saving_vs_average_gbp);
   saving.append(amount, document.createTextNode(
-    ` today by moving ${a.shift_kwh} kWh into the cheapest hours instead of ${vsPeak != null ? "the evening peak" : "using it at the average price"}. ` +
-    `Compared with the average price, that’s about ${gbp(a.monthly_vs_average_gbp, 0)} a month.`));
+    `today, by moving ${a.shift_kwh} kWh into the cheapest hours instead of ${vsPeak != null ? "the evening peak" : "paying the average price"}. ` +
+    `Against the average price, that’s about ${gbp(a.monthly_vs_average_gbp, 0)} a month.`));
   $("#tip").textContent = a.tip;
   renderRibbon(a.slots);
 }
@@ -154,41 +165,128 @@ function svgEl(tag, attrs) {
 
 let lastSlots = null, lastMonths = null;
 function chartWidth(box) { return Math.max(300, Math.round(box.clientWidth || 720)); }
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const niceStep = (range) => (range > 80 ? 20 : range > 30 ? 10 : 5);
+
+function runs(flags) {  // [[startIndex, length], ...] for consecutive true values
+  const out = [];
+  flags.forEach((f, i) => {
+    if (!f) return;
+    if (out.length && out[out.length - 1][0] + out[out.length - 1][1] === i) out[out.length - 1][1] += 1;
+    else out.push([i, 1]);
+  });
+  return out;
+}
+
+function setReadout(slots, i) {
+  const r = $("#readout");
+  const s = slots[i];
+  const end = slots[i + 1] ? slots[i + 1].start.slice(11, 16) : "";
+  const day = s.start.slice(0, 10) !== slots[0].start.slice(0, 10) ? "tomorrow " : "";
+  r.innerHTML = "";
+  const p = document.createElement("span"); p.className = "p"; p.textContent = `${s.price.toFixed(1)}p`;
+  const t = document.createElement("span"); t.className = "t";
+  t.textContent = i === 0 ? ` per kWh now, until ${end}` : ` per kWh, ${day}${s.start.slice(11, 16)}–${end}`;
+  r.append(p, t);
+}
 
 function renderRibbon(slots) {
   lastSlots = slots;
   const box = $("#ribbon");
-  const W = chartWidth(box), H = 190, padB = 22, padT = 8;
+  const W = chartWidth(box), narrow = W < 520, H = narrow ? 210 : 250;
+  const padL = 34, padR = 2, padT = 20, padB = 24;
   const prices = slots.map((s) => s.price);
-  const lo = Math.min(0, ...prices), hi = Math.max(1, ...prices);
+  const step = niceStep(Math.max(...prices) - Math.min(0, ...prices));
+  const lo = Math.floor(Math.min(0, ...prices) / step) * step, hi = Math.ceil(Math.max(1, ...prices) / step) * step;
   const y = (p) => padT + (hi - p) / (hi - lo) * (H - padT - padB);
-  const bw = W / slots.length;
-  const style = getComputedStyle(document.documentElement);
-  const colour = (name) => style.getPropertyValue(name).trim();
-  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
-  const every = W < 500 ? 6 : 3;  // hours between axis labels
+  const bw = (W - padL - padR) / slots.length;
+  const x = (i) => padL + i * bw;
+  const c = { cheap: cssVar("--cheap"), mid: cssVar("--mid"), peak: cssVar("--peak"), muted: cssVar("--muted"),
+              line: cssVar("--line"), ink: cssVar("--ink"), cheapWash: cssVar("--cheap-wash"), peakWash: cssVar("--peak-wash") };
+  const hourOf = (s) => Number(s.start.slice(11, 13));
+  const isPeak = slots.map((s) => hourOf(s) >= 16 && hourOf(s) < 19);
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, tabindex: 0,
+                             "aria-label": "Price chart. Use the left and right arrow keys to read each half-hour." });
+
+  for (let v = lo; v <= hi; v += step) {  // price gridlines
+    svg.append(svgEl("line", { x1: padL, x2: W - padR, y1: y(v), y2: y(v), stroke: c.line, "stroke-width": v === 0 ? 1.2 : 1,
+                               "stroke-dasharray": v === 0 ? "" : "2 4" }));
+    const t = svgEl("text", { x: padL - 6, y: y(v) + 4, "font-size": 11, "text-anchor": "end", fill: c.muted });
+    t.textContent = `${v}p`;
+    svg.append(t);
+  }
+  for (const [i, n] of runs(isPeak)) {
+    svg.append(svgEl("rect", { x: x(i), y: padT, width: n * bw, height: H - padT - padB, fill: c.peakWash }));
+  }
+  for (const [i, n] of runs(slots.map((s) => s.best))) {
+    svg.append(svgEl("rect", { x: x(i), y: padT, width: n * bw, height: H - padT - padB, fill: c.cheapWash, rx: 4 }));
+  }
+
+  const gap = bw > 10 ? 2 : 1;
   slots.forEach((s, i) => {
-    const label = s.start.slice(11, 16);
-    const hour = Number(label.slice(0, 2));
-    const fill = s.best ? colour("--cheap") : (hour >= 16 && hour < 19 ? colour("--peak") : colour("--mid"));
-    const top = Math.min(y(s.price), y(0)), h = Math.max(1.5, Math.abs(y(s.price) - y(0)));
-    const bar = svgEl("rect", { x: i * bw + 0.5, y: top, width: Math.max(1, bw - 1.5), height: h, fill, rx: 1.5 });
-    const tip = svgEl("title", {});
-    tip.textContent = `${label}: ${s.price.toFixed(1)}p per kWh`;
-    bar.append(tip);
-    svg.append(bar);
-    if (label.endsWith(":00") && hour % every === 0) {
-      const t = svgEl("text", { x: i * bw, y: H - 6, "font-size": 11, fill: colour("--muted") });
+    const fill = s.best ? c.cheap : isPeak[i] ? c.peak : c.mid;
+    const top = Math.min(y(s.price), y(0)), h = Math.max(2, Math.abs(y(s.price) - y(0)));
+    svg.append(svgEl("rect", { x: x(i) + gap / 2, y: top, width: Math.max(1, bw - gap), height: h, fill, rx: Math.min(3, bw / 4) }));
+    const label = s.start.slice(11, 16), hour = hourOf(s);
+    if (label.endsWith(":00") && hour % (narrow ? 6 : 3) === 0 && i > 1) {
+      const t = svgEl("text", { x: x(i), y: H - 6, "font-size": 11, "text-anchor": "middle", fill: c.muted });
       t.textContent = label;
       svg.append(t);
     }
+    if (i > 0 && s.start.slice(0, 10) !== slots[i - 1].start.slice(0, 10)) {  // midnight
+      svg.append(svgEl("line", { x1: x(i), x2: x(i), y1: 4, y2: H - padB, stroke: c.muted, "stroke-width": 1, "stroke-dasharray": "3 3" }));
+      const t = svgEl("text", { x: x(i) + 5, y: 13, "font-size": 11, fill: c.muted });
+      t.textContent = "Tomorrow";
+      svg.append(t);
+    }
   });
-  svg.append(svgEl("line", { x1: 0, x2: W, y1: y(0), y2: y(0), stroke: colour("--line"), "stroke-width": 1 }));
+  const now = svgEl("text", { x: padL, y: 13, "font-size": 11, "font-weight": 600, fill: c.ink });
+  now.textContent = "Now";
+  svg.append(now);
+
+  const cursor = svgEl("rect", { x: 0, y: padT - 4, width: bw, height: H - padT - padB + 4, fill: "none",
+                                 stroke: c.ink, "stroke-width": 1.5, rx: 4, visibility: "hidden" });
+  svg.append(cursor);
+  let current = 0;
+  const show = (i) => {
+    current = Math.max(0, Math.min(slots.length - 1, i));
+    cursor.setAttribute("x", x(current));
+    cursor.setAttribute("visibility", "visible");
+    setReadout(slots, current);
+  };
+  const reset = () => { cursor.setAttribute("visibility", "hidden"); setReadout(slots, 0); };
+  const indexAt = (ev) => {
+    const r = svg.getBoundingClientRect();
+    return Math.floor(((ev.clientX - r.left) * (W / r.width) - padL) / bw);
+  };
+  svg.addEventListener("pointermove", (ev) => show(indexAt(ev)));
+  svg.addEventListener("pointerdown", (ev) => show(indexAt(ev)));
+  svg.addEventListener("pointerleave", reset);
+  svg.addEventListener("blur", reset);
+  svg.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+      ev.preventDefault();
+      show(cursor.getAttribute("visibility") === "hidden" ? 0 : current + (ev.key === "ArrowRight" ? 1 : -1));
+    }
+  });
+
   box.innerHTML = "";
   box.append(svg);
+  setReadout(slots, 0);
 }
 
 $("#shift").value = state.shift;
+document.querySelectorAll(".step").forEach((btn) => btn.addEventListener("click", () => {
+  const input = $("#shift");
+  const v = Math.min(100, Math.max(0.5, (Number(input.value) || 0) + Number(btn.dataset.step)));
+  input.value = v;
+  input.dispatchEvent(new Event("input"));
+}));
+$("#change-region").addEventListener("click", (e) => {
+  e.preventDefault();
+  $("#where-h").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  $("#postcode").focus({ preventScroll: true });
+});
 $("#shift").addEventListener("input", debounce((e) => {
   const v = Number(e.target.value);
   if (v >= 0.5 && v <= 100) { state.shift = v; store.set("shift", String(v)); loadAdvice(); }
@@ -331,6 +429,7 @@ async function runSolar() {
     dl.innerHTML = "";
     for (const [label, value] of figures) {
       const div = document.createElement("div");
+      if (label === "Saving a year") div.className = "key";
       const dt = document.createElement("dt"); dt.textContent = label;
       const dd = document.createElement("dd"); dd.textContent = value;
       div.append(dt, dd);
@@ -348,27 +447,36 @@ async function runSolar() {
 function renderMonths(months) {
   lastMonths = months;
   const box = $("#months");
-  const W = chartWidth(box), H = 170, padB = 22;
+  const W = chartWidth(box), H = 180, padB = 22, padT = 18;
   const hi = Math.max(1, ...months.map((m) => m.saving_gbp));
   const bw = W / months.length;
-  const style = getComputedStyle(document.documentElement);
   const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
-  const gap = Math.min(12, bw * 0.25);
+  const gap = Math.min(10, bw * 0.28);
+  const best = months.reduce((b, m, i) => (m.saving_gbp > months[b].saving_gbp ? i : b), 0);
   months.forEach((m, i) => {
-    const h = Math.max(1, (Math.max(0, m.saving_gbp) / hi) * (H - padB - 18));
-    const bar = svgEl("rect", { x: i * bw + gap / 2, y: H - padB - h, width: bw - gap, height: h, fill: style.getPropertyValue("--cheap").trim(), rx: 3 });
+    const h = Math.max(2, (Math.max(0, m.saving_gbp) / hi) * (H - padB - padT));
+    const bar = svgEl("rect", { x: i * bw + gap / 2, y: H - padB - h, width: bw - gap, height: h,
+                                fill: cssVar("--cheap"), rx: Math.min(5, (bw - gap) / 3) });
     const tip = svgEl("title", {}); tip.textContent = `${m.month}: ${gbp(m.saving_gbp)} saved, ${m.generation_kwh} kWh generated`;
     bar.append(tip);
-    const label = svgEl("text", { x: i * bw + bw / 2, y: H - 6, "font-size": 12, "text-anchor": "middle", fill: style.getPropertyValue("--muted").trim() });
-    label.textContent = m.month;
-    const value = svgEl("text", { x: i * bw + bw / 2, y: H - padB - h - 4, "font-size": 11, "text-anchor": "middle", fill: style.getPropertyValue("--ink").trim() });
-    value.textContent = `£${Math.round(m.saving_gbp)}`;
-    svg.append(bar, label, value);
+    const label = svgEl("text", { x: i * bw + bw / 2, y: H - 6, "font-size": 11, "text-anchor": "middle", fill: cssVar("--muted") });
+    label.textContent = W < 520 ? m.month.slice(0, 1) : m.month;
+    svg.append(bar, label);
+    if (i === best || bw > 44) {
+      const value = svgEl("text", { x: i * bw + bw / 2, y: H - padB - h - 5, "font-size": 11, "text-anchor": "middle",
+                                    fill: cssVar("--ink"), "font-weight": i === best ? 600 : 400 });
+      value.textContent = `£${Math.round(m.saving_gbp)}`;
+      svg.append(value);
+    }
   });
   box.innerHTML = "";
   box.append(svg);
 }
 $("#solar-form").addEventListener("input", debounce(runSolar, 350));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (lastSlots) renderRibbon(lastSlots);
+  if (lastMonths) renderMonths(lastMonths);
+});
 window.addEventListener("resize", debounce(() => {
   if (lastSlots && !$("#today").hidden) renderRibbon(lastSlots);
   if (lastMonths && !$("#solar").hidden) renderMonths(lastMonths);

@@ -105,7 +105,7 @@ soon as it was plugged in. Saving: £4.17 (44%).
 
 **[Try Off-peak live →](https://agile-flex-offpeak.onrender.com)** <sub>(free hosting: if nobody has visited for a while, the first load takes up to a minute while it wakes up)</sub>
 
-[![Off-peak on a phone. Click to open the live app](docs/today_mobile.png)](https://agile-flex-offpeak.onrender.com)
+<a href="https://agile-flex-offpeak.onrender.com"><img src="docs/today_mobile.png" width="320" alt="Off-peak on a phone. Click to open the live app"></a>
 
 `webapp/` is a small FastAPI app for anyone on Agile, not just EV owners:
 
@@ -120,6 +120,8 @@ python scripts/generate_vapid_keys.py     # run the three export lines it prints
 export CRON_TOKEN=any-long-random-string
 uvicorn webapp.main:app --reload          # open http://127.0.0.1:8000
 ```
+
+To work on the front end without a network connection, `python scripts/dev_server.py` runs the app on the sample prices the tests use, with the clock fixed so every run looks the same. Fonts are self-hosted in `webapp/static/fonts/` (SIL Open Font License), so the app makes no third-party requests.
 
 The live demo runs on Render's free tier with notifications switched off; turning them on needs a database and VAPID keys (task 1 in [TASKS.md](TASKS.md)). Locally it stores subscribers in a SQLite file. Browsers allow notifications on `localhost`; in production they need HTTPS, and on iPhone the site must be added to the Home Screen first (iOS 16.4+). To deploy for free, see task 1 in [TASKS.md](TASKS.md) ([`render.yaml`](render.yaml) sets up the Render service; you add a Postgres URL, the VAPID keys and `CRON_TOKEN`).
 
@@ -141,7 +143,7 @@ The live demo runs on Render's free tier with notifications switched off; turnin
 git clone https://github.com/omlettehead22/Agile-Flex-Optimiser && cd Agile-Flex-Optimiser
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pytest -q                          # 67 tests, ~45 s
+pytest -q                          # 68 tests, ~45 s
 python -m agileflex backtest       # ~1 min: all strategies, metrics, charts, forecast study -> outputs/
 python -m agileflex plan           # tonight's plan -> plans/ (after ~16:00 UK time)
 ```

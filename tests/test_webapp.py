@@ -304,3 +304,14 @@ def test_pages_and_assets_are_revalidated_after_deploys(env):
     for path in ("/", "/static/app.js", "/static/style.css", "/guides"):
         assert client.get(path).headers.get("cache-control") == "no-cache", path
     assert "no-cache" not in client.get("/api/health").headers.get("cache-control", "")
+
+
+def test_fonts_are_self_hosted(env):
+    client, _, _ = env
+    for path in ("/", "/guides", "/guides/how-agile-works"):
+        assert "fonts.googleapis.com" not in client.get(path).text, path
+    css = client.get("/static/style.css").text
+    for font in ("bricolage-grotesque.woff2", "source-sans-3-latin-400-normal.woff2", "source-sans-3-latin-600-normal.woff2"):
+        assert font in css
+        r = client.get(f"/static/fonts/{font}")
+        assert r.status_code == 200 and r.content[:4] == b"wOF2", font
