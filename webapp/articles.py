@@ -81,29 +81,30 @@ def _page(title: str, description: str, content: str, current: str) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{html.escape(title)} · Off-peak</title>
+  <title>{html.escape(title)}: Off-peak</title>
   <meta name="description" content="{html.escape(description, quote=True)}">
-  <meta name="theme-color" content="#17323F">
+  <meta name="theme-color" content="#F2F5F3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0C1A21" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/icon-192.png">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="preload" href="/static/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <a class="skip" href="#main">Skip to content</a>
   <header class="top">
-    <a class="brand" href="/"><img src="/static/icon-192.png" alt="" width="28" height="28">Off-peak</a>
+    <a class="brand" href="/"><img src="/static/icon-192.png" alt="" width="30" height="30">Off-peak</a>
     <nav class="tabs" aria-label="Sections">
-      {nav_link("/", "Today", "today")}{nav_link("/#solar", "Solar calculator", "solar")}{nav_link("/guides", "Guides", "guides")}
+      {nav_link("/", "Today", "today")}{nav_link("/#solar", "Solar", "solar")}{nav_link("/guides", "Guides", "guides")}
     </nav>
   </header>
-  <main>
+  <main id="main">
 {content}
   </main>
   <footer class="foot">
-    <p>Guides are general information, not financial advice. Rules and prices change; check gov.uk and your supplier before deciding. Not affiliated with Octopus Energy.</p>
+    <p>Guides are general information, not financial advice. Rules and prices change, so check gov.uk and your supplier before deciding.</p>
+    <p>Not affiliated with Octopus Energy. <a href="https://github.com/omlettehead22/Agile-Flex-Optimiser">Source code</a></p>
   </footer>
 </body>
 </html>
@@ -116,11 +117,11 @@ def _date(d: dt.date) -> str:
 
 def index_page() -> str:
     items = "\n".join(
-        f'<li><a href="/guides/{a.slug}"><h2>{html.escape(a.title)}</h2></a>'
-        f'<p>{html.escape(a.summary)}</p><p class="meta">{a.reading_minutes} min read</p></li>'
+        f'<li><a href="/guides/{a.slug}"><h2>{html.escape(a.title)}</h2>'
+        f'<p>{html.escape(a.summary)}</p><p class="meta">{a.reading_minutes} min read</p></a></li>'
         for a in load_all().values())
-    content = f"""    <section class="hero"><p class="hero-lead">Guides</p>
-      <h1 class="hero-time guides-title">Use energy when it's cheap</h1>
+    content = f"""    <section class="hero">
+      <h1 class="hero-time guides-title">Use energy when it’s cheap</h1>
       <p class="hero-sub">Short, practical guides on smart tariffs, timing, solar, batteries and heat pumps.</p></section>
     <ul class="guides">
 {items}
@@ -136,10 +137,10 @@ def article_page(slug: str) -> str | None:
     related = "".join(
         f'<li><a href="/guides/{r}">{html.escape(articles[r].title)}</a></li>' for r in a.related)
     content = f"""    <article class="article">
-      <p class="meta"><a href="/guides">All guides</a></p>
+      <a class="back" href="/guides">All guides</a>
       <h1>{html.escape(a.title)}</h1>
       <p class="lede">{html.escape(a.summary)}</p>
-      <p class="meta">Last checked {_date(a.updated)} · {a.reading_minutes} min read</p>
+      <p class="meta">{a.reading_minutes} min read. Last checked {_date(a.updated)}.</p>
 {a.body_html}
       {f'<aside class="related"><h2>Read next</h2><ul>{related}</ul></aside>' if related else ''}
     </article>"""
