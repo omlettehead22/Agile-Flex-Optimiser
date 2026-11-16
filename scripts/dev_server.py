@@ -1,9 +1,10 @@
 """Run Off-peak locally on sample prices, with no network access: for UI work and screenshots.
 
     python scripts/dev_server.py                 # http://127.0.0.1:8001, clock fixed at 3 Dec 2025 14:10
-    python scripts/dev_server.py --at "2025-12-03 21:40" --port 8002
+    python scripts/dev_server.py --at "2025-12-03 16:30" --port 8002
 
-Prices come from the synthetic market used by the tests, so every run looks the same.
+Prices come from the synthetic market used by the tests, so every run looks the same. Like Octopus,
+tomorrow's prices only appear from 16:00 UK time, so before then the app sees prices until 23:00.
 """
 import argparse
 import os
@@ -21,6 +22,14 @@ from fakes import synthetic_market  # noqa: E402
 from webapp.main import create_app  # noqa: E402
 
 MARKET = synthetic_market("2025-11-01", "2026-02-01", seed=5)["price_p_kwh"]
+NOW = pd.Timestamp("2025-12-03 14:10", tz="UTC")
+
+
+def published_until(now: pd.Timestamp) -> pd.Timestamp:
+    """Like Octopus: prices run to 23:00 UK time tonight, or tomorrow night once published at 16:00."""
+    local = now.tz_convert("Europe/London")
+    day = local.normalize() + pd.Timedelta(days=1 if local.hour >= 16 else 0)
+    return (day + pd.Timedelta(hours=23)).tz_convert("UTC")
 
 
 def fake_get(url, params=None):
@@ -31,6 +40,7 @@ def fake_get(url, params=None):
         return {"single_register_electricity_tariffs": {}}
     if "standard-unit-rates" in url:
         lo, hi = pd.Timestamp(params["period_from"]), pd.Timestamp(params["period_to"])
+        hi = min(hi, published_until(NOW))
         sel = MARKET[(MARKET.index >= lo) & (MARKET.index < hi)]
         return {"results": [{"valid_from": t.isoformat(), "value_inc_vat": v} for t, v in sel.items()], "next": None}
     if "grid-supply-points" in url:
@@ -43,8 +53,9 @@ def main():
     ap.add_argument("--at", default="2025-12-03 14:10", help="fixed UTC time the app thinks it is")
     ap.add_argument("--port", type=int, default=8001)
     args = ap.parse_args()
-    now = pd.Timestamp(args.at, tz="UTC")
-    app = create_app("sqlite:///:memory:", get=fake_get, clock=lambda: now,
+    global NOW
+    NOW = pd.Timestamp(args.at, tz="UTC")
+    app = create_app("sqlite:///:memory:", get=fake_get, clock=lambda: NOW,
                      vapid_public_key="dev-key", cron_token="dev")
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
 

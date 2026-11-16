@@ -108,17 +108,21 @@ const When = (b) => (b.day === "tomorrow" ? `Tomorrow ${span(b)}` : span(b));
 function renderAdvice(a) {
   const first = a.cheapest[0];
   const below = (p) => Math.round((1 - p / a.average_p) * 100);
-  $("#hero-lead").textContent = `Cheapest time in ${a.region_name}, next 24 hours`;
+  // Before ~16:00 tomorrow's prices aren't published, so the horizon can be well under 24 hours.
+  const fullDay = a.slots.length >= 40;
+  $("#hero-lead").textContent = fullDay
+    ? `Cheapest time in ${a.region_name}, next 24 hours`
+    : `Cheapest time in ${a.region_name} until ${a.horizon_end.slice(11, 16)}. Tomorrow’s prices come out around 4pm.`;
   $("#hero-time").textContent = span(first);
   const sub = $("#hero-sub");
   sub.textContent = `${first.day === "tomorrow" ? "Tomorrow, at " : "At "}${first.avg_p.toFixed(1)}p per kWh. `;
   if (a.average_p > 0 && below(first.avg_p) > 0) {
     const badge = document.createElement("span");
     badge.className = "badge";
-    badge.textContent = `${below(first.avg_p)}% below the day’s average`;
+    badge.textContent = `${below(first.avg_p)}% below the average`;
     sub.append(badge, document.createTextNode(` of ${a.average_p.toFixed(1)}p.`));
   } else {
-    sub.append(document.createTextNode(`The day’s average is ${a.average_p.toFixed(1)}p.`));
+    sub.append(document.createTextNode(`The average is ${a.average_p.toFixed(1)}p.`));
   }
 
   const ul = $("#cheapest");
@@ -228,7 +232,8 @@ function renderRibbon(slots) {
     const top = Math.min(y(s.price), y(0)), h = Math.max(2, Math.abs(y(s.price) - y(0)));
     svg.append(svgEl("rect", { x: x(i) + gap / 2, y: top, width: Math.max(1, bw - gap), height: h, fill, rx: Math.min(3, bw / 4) }));
     const label = s.start.slice(11, 16), hour = hourOf(s);
-    if (label.endsWith(":00") && hour % (narrow ? 6 : 3) === 0 && i > 1) {
+    const every = slots.length <= 16 ? 1 : slots.length <= 28 ? 2 : narrow ? 6 : 3;  // hours between labels
+    if (label.endsWith(":00") && hour % every === 0 && i > 1) {
       const t = svgEl("text", { x: x(i), y: H - 6, "font-size": 11, "text-anchor": "middle", fill: c.muted });
       t.textContent = label;
       svg.append(t);
