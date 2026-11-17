@@ -1,37 +1,33 @@
-# Charging plan: Mon 16 Nov 21:30 → Tue 17 Nov 18:00
+# Charging plan: Tue 17 Nov 23:00 → Wed 18 Nov 18:00
 
-**Estimated cost for the day (home + car): £9.69**, against £10.99 if the car charged as soon as it was plugged in. **Saving: £1.30 (12%).**
+**Estimated cost for the day (home + car): £11.08**, against £11.55 if the car charged as soon as it was plugged in. **Saving: £0.47 (4%).**
 
-Tariff E-1R-AGILE-24-10-01-C · generated 16 Nov 21:02 UK time
+Tariff E-1R-AGILE-24-10-01-C · generated 17 Nov 22:53 UK time
 
-> Planned late, at 21:02, so this plan starts at 21:30 instead of 18:00.
+> Planned late, at 22:53, so this plan starts at 23:00 instead of 18:00.
 
 ## Car: 30 kWh needed by 07:30
 
-- Charge **21:30–22:30**, 3.1 kWh (from the home battery)
-- Charge **01:00–05:00**, 26.9 kWh (avg 25.2p/kWh; 2.4 kWh of it from the home battery)
+- Charge **23:00–00:00**, 7.0 kWh (avg 29.0p/kWh)
+- Charge **03:30–06:30**, 21.0 kWh (avg 30.1p/kWh)
+- Charge **07:00–07:30**, 2.0 kWh (avg 31.3p/kWh)
 
 ## Home battery
 
-- Charge **01:30–02:00**, 2.5 kWh
-- Charge **02:30–03:00**, 2.5 kWh
-- Charge **03:30–04:00**, 2.4 kWh
-- Charge **13:00–13:30**, 1.6 kWh
-- Power the home (and car) **21:30–01:30**, 6.7 kWh
-- Power the home (and car) **07:00–11:00**, 1.4 kWh
+- No charging needed
 
 ## Flexible appliances (washing machine, dishwasher, tumble dryer)
 
-- Good: **22:00–23:00** (avg 29.7p)
-- Good: **12:30–14:30** (avg 29.0p)
-- Avoid: 16:30–17:30 (avg 49.5p)
+- Good: **07:00–08:00** (avg 31.3p)
+- Good: **10:00–12:00** (avg 33.1p)
+- Avoid: 16:30–17:30 (avg 53.0p)
 
 ## Prices
 
-Cheapest 24.2p at 02:30 · most expensive 49.7p at 16:30 · average 31.8p/kWh
+Cheapest 28.7p at 23:00 · most expensive 53.4p at 16:30 · average 35.4p/kWh
 
 ## Running total
 
-Saved **£14.70** over 6 planned day(s) since 11 Nov 2026, compared with charging on plug-in.
+Saved **£15.17** over 7 planned day(s) since 11 Nov 2026, compared with charging on plug-in.
 
 ![Plan chart](latest.png)
