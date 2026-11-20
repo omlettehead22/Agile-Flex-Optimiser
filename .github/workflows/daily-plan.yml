@@ -1,8 +1,9 @@
 name: daily-plan
 # Octopus publishes tomorrow's Agile prices around 16:00 UK time (sometimes later).
-# GitHub runs scheduled jobs on a best-effort basis and often delays or drops them, so this tries
-# every 30 minutes from 15:17 to 21:47 UTC. Once today's plan exists, later runs stop in seconds.
-# A plan made after 18:00 starts from the next half-hour instead.
+# Main trigger: cron-job.org calls workflow_dispatch at 16:15 and 17:15 UK time (see README), because
+# GitHub's own schedule is best effort and in practice ran this workflow hours late. The schedule
+# below stays on as a backup; once today's plan exists, scheduled runs stop in seconds and
+# dispatched runs skip inside the planner. A plan made after 18:00 starts from the next half-hour.
 on:
   schedule:
     - cron: "17,47 15-21 * * *"
