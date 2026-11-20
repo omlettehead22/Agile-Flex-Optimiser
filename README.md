@@ -99,7 +99,19 @@ soon as it was plugged in. Saving: £4.17 (44%).
 ```
 <sub>Example from test data.</sub>
 
-**Turn it on (10 minutes):** set your region, car and battery in `config.yaml` → GitHub **Actions** tab → enable workflows → **daily-plan** → **Run workflow**. If it fails at `git push`, set **Settings → Actions → General → Workflow permissions → Read and write**. It then tries every 30 minutes from 15:17 to 21:47 UTC, because GitHub often delays or drops scheduled jobs; the first run after prices are out commits the plan and later runs stop in seconds. A plan made after 18:00 starts from the next half-hour. GitHub pauses scheduled workflows on repos with no activity for 60 days; re-enable from the Actions tab if that happens.
+**Turn it on (10 minutes):** set your region, car and battery in `config.yaml` → GitHub **Actions** tab → enable workflows → **daily-plan** → **Run workflow**. If it fails at `git push`, set **Settings → Actions → General → Workflow permissions → Read and write**. A plan made after 18:00 starts from the next half-hour.
+
+**Make it run on time.** GitHub's own schedule is best effort: in practice it ran this workflow once or twice a day, usually after 22:00, long after the car plugs in. So the workflow is started by [cron-job.org](https://cron-job.org) (free) at 16:15 and 17:15 UK time, and GitHub's schedule (every 30 minutes, 15:17–21:47 UTC) stays on as a backup. Whichever run comes first after prices are out commits the plan; later runs skip. To set it up for your fork:
+
+1. Create a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with access to only this repository and one permission: **Actions: Read and write**. Note its expiry date; the job stops working when it expires.
+2. On cron-job.org, create a job:
+   - **URL:** `https://api.github.com/repos/<you>/<repo>/actions/workflows/daily-plan.yml/dispatches`
+   - **Schedule:** custom, `15 16,17 * * *`, time zone Europe/London
+   - **Request method:** `POST`, **body:** `{"ref":"main"}`
+   - **Headers:** `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Authorization: Bearer <your token>`
+3. Press **Test run**. A `204` response means GitHub accepted it; the run appears in the Actions tab a few seconds later.
+
+GitHub pauses scheduled workflows on repos with no activity for 60 days; the cron-job.org trigger keeps working regardless.
 
 ## Off-peak web app
 
